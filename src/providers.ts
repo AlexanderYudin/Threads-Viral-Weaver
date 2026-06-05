@@ -90,7 +90,11 @@ export async function officialProvider(
 export async function scrapeCreatorsProvider(
   params: SearchParams
 ): Promise<ProviderOutput> {
-  if (!params.token) {
+  // Ключ: из запроса (введён пользователем) или дефолтный из окружения сервера
+  const envKey =
+    typeof process !== 'undefined' ? process.env?.SCRAPECREATORS_API_KEY : undefined
+  const token = params.token || envKey
+  if (!token) {
     return {
       posts: [],
       metricsAvailable: false,
@@ -106,7 +110,7 @@ export async function scrapeCreatorsProvider(
     url.searchParams.set('query', kw)
     try {
       const res = await fetch(url.toString(), {
-        headers: { 'x-api-key': params.token },
+        headers: { 'x-api-key': token },
       })
       // Устойчивый парсинг: при ошибке API отдаёт текст ("Not Found"), не JSON
       const text = await res.text()

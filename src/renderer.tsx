@@ -14,6 +14,7 @@ export const renderer = jsxRenderer(({ children }) => {
           content="Twinby Viral Weaver — поиск виральных постов в Threads по ключевым словам, расчёт ER и виральности для дейтинг/отношения тематики"
         />
         <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
         <link href="/static/style.css" rel="stylesheet" />
       </head>
       <body>{children}</body>

@@ -35,7 +35,7 @@
 }
 
 *,*::before,*::after{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scrollbar-gutter:stable}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 
 body{
@@ -85,6 +85,22 @@ button{font-family:inherit}
 .state .swoosh{height:34px;margin:0 auto 14px;opacity:.7}
 .site-footer .swoosh{height:14px;opacity:.8}
 
+/* ---------- login gate ---------- */
+.login-gate{
+  position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:
+    radial-gradient(800px 560px at 50% -10%, rgba(167,60,255,.40), transparent 60%),
+    linear-gradient(180deg,#241043 0%,#1D172A 50%,#15101F 100%);
+}
+.login-card{width:100%;max-width:420px;border-radius:var(--radius-xl);padding:38px 32px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.login-mark .swoosh{height:40px;margin-bottom:6px}
+.login-title{font-family:'Coolvetica',sans-serif;font-weight:400;font-size:30px;color:#fff;margin:0}
+.login-title .brand-name{font-family:'Coolvetica',sans-serif}
+.login-sub{font-size:14px;color:var(--ink-soft);margin:2px 0 22px;line-height:1.5}
+.login-sub b{color:var(--ink);font-weight:600}
+.login-btn-wrap{display:flex;justify-content:center;min-height:44px}
+.login-error{margin:16px 0 0;font-size:13px;color:#FFB4B4;background:rgba(255,80,80,.10);border:1px solid rgba(255,80,80,.3);border-radius:var(--radius-sm);padding:10px 14px}
+
 /* ---------- header ---------- */
 .site-header{
   position:sticky;top:0;z-index:60;
@@ -97,6 +113,14 @@ button{font-family:inherit}
 .brand{display:flex;align-items:center;gap:12px}
 .brand-mark{display:grid;place-items:center}
 .brand-mark .swoosh{height:27px}
+.header-actions{display:flex;align-items:center;gap:12px}
+.user-chip{display:flex;align-items:center;gap:9px;padding:5px 6px 5px 10px;background:var(--glass-2);border:1px solid var(--hairline);border-radius:var(--radius-pill)}
+.user-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,.1)}
+.user-email{font-size:12.5px;color:var(--ink-soft);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-logout{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:transparent;border:none;color:var(--ink-faint);cursor:pointer;transition:background .18s,color .18s}
+.user-logout:hover{background:rgba(255,255,255,.10);color:#fff}
+.user-logout .lucide{width:16px;height:16px}
+@media (max-width:600px){.user-email{display:none}}
 .brand-text{display:flex;flex-direction:column;line-height:1.05}
 .brand-name{font-family:'Coolvetica',sans-serif;font-size:24px;letter-spacing:.01em}
 .brand-sub{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
@@ -168,10 +192,12 @@ button{font-family:inherit}
 .chip-row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
 .chip-row-label{font-size:12px;color:var(--ink-faint);margin-right:2px}
 .chip-tag{
+  display:inline-flex;align-items:center;gap:7px;
   font-family:inherit;font-size:13px;font-weight:500;color:var(--ink);
   background:var(--glass-2);border:1px solid var(--hairline);border-radius:var(--radius-pill);
   padding:7px 14px;cursor:pointer;transition:transform .16s var(--ease-out-expo),background .18s,border-color .18s;
 }
+.chip-tag .lucide{width:15px;height:15px;color:var(--tw-fresh-kiwi)}
 .chip-tag:hover{transform:translateY(-2px);background:rgba(135,70,255,.20);border-color:rgba(135,70,255,.5)}
 
 .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -193,9 +219,9 @@ button{font-family:inherit}
 .notes-box ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
 
 /* ---------- results grid + post cards ---------- */
-.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.results-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .post{
-  display:flex;flex-direction:column;border-radius:var(--radius-lg);padding:18px;
+  display:flex;flex-direction:column;min-width:0;border-radius:var(--radius-lg);padding:18px;
   background:linear-gradient(180deg,var(--glass-2),var(--glass));border:1px solid var(--hairline);
   transition:transform .2s var(--ease-out-expo),border-color .2s,box-shadow .2s;
 }
@@ -206,9 +232,10 @@ button{font-family:inherit}
 .post-name{font-size:14px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .post-meta{font-size:12px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .post-media-ico{color:var(--ink-faint)}
-.post-text{font-size:14px;color:var(--ink-soft);margin:0 0 13px;flex:1;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.post-text{font-size:14px;color:var(--ink-soft);margin:0 0 13px;flex:1;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;word-break:break-word}
 .post-tags{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:13px}
-.badge{font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:var(--radius-pill);border:1px solid transparent}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:var(--radius-pill);border:1px solid transparent}
+.badge .lucide{width:13px;height:13px}
 .badge--fire{background:rgba(0,220,0,.14);color:var(--tw-kiwi-bright);border-color:rgba(0,220,0,.35);box-shadow:var(--neon-kiwi-glow)}
 .badge--hot{background:rgba(255,181,71,.14);color:var(--tw-amber);border-color:rgba(255,181,71,.32)}
 .badge--ok{background:rgba(183,230,255,.12);color:var(--tw-blue-sky);border-color:rgba(183,230,255,.28)}
@@ -248,7 +275,7 @@ button{font-family:inherit}
 /* ---------- responsive ---------- */
 @media (max-width:1024px){
   .filters{grid-template-columns:repeat(3,1fr)}
-  .results-grid{grid-template-columns:repeat(2,1fr)}
+  .results-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:760px){
   .filters{grid-template-columns:1fr 1fr}

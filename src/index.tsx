@@ -10,14 +10,55 @@ import {
   ensembleDataProvider,
 } from './providers'
 import { HomePage } from './page'
+import {
+  verifyGoogleCredential,
+  signSession,
+  verifySession,
+  cookieHeader,
+  clearCookieHeader,
+  readCookie,
+} from './auth'
 
 const app = new Hono()
 
 app.use('/api/*', cors())
 app.use(renderer)
 
-// ---------- API: поиск ----------
+// ---------- Авторизация (Google Sign-In, домены Twinby/Neuralab) ----------
+app.post('/api/login', async (c) => {
+  let body: any
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Невалидный JSON' }, 400)
+  }
+  const credential = body?.credential
+  if (!credential) return c.json({ error: 'Нет credential' }, 400)
+
+  const result = await verifyGoogleCredential(String(credential))
+  if ('error' in result) return c.json({ allowed: false, error: result.error }, 403)
+
+  const token = signSession(result)
+  c.header('Set-Cookie', cookieHeader(token))
+  return c.json({ allowed: true, email: result.email, name: result.name, picture: result.picture })
+})
+
+app.get('/api/me', (c) => {
+  const user = verifySession(readCookie(c.req.header('cookie')))
+  if (!user) return c.json({ authed: false })
+  return c.json({ authed: true, email: user.email, name: user.name, picture: user.picture })
+})
+
+app.post('/api/logout', (c) => {
+  c.header('Set-Cookie', clearCookieHeader())
+  return c.json({ ok: true })
+})
+
+// ---------- API: поиск (только для авторизованных) ----------
 app.post('/api/search', async (c) => {
+  const user = verifySession(readCookie(c.req.header('cookie')))
+  if (!user) return c.json({ error: 'Требуется вход (Twinby/Neuralab)' }, 401)
+
   let body: any
   try {
     body = await c.req.json()
@@ -103,6 +144,14 @@ app.post('/api/search', async (c) => {
   }
 
   return c.json(result)
+})
+
+// Конфиг для фронта: задан ли дефолтный ключ на сервере
+app.get('/api/config', (c) => {
+  const hasDefaultKey = !!(
+    typeof process !== 'undefined' && process.env?.SCRAPECREATORS_API_KEY
+  )
+  return c.json({ hasDefaultKey })
 })
 
 // Главная страница

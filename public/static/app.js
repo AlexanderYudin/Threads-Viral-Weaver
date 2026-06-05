@@ -7,9 +7,81 @@ function icons() {
   if (window.lucide) lucide.createIcons();
 }
 
-// Восстановление ключа из localStorage
+let hasDefaultKey = false;
+
+// ===== Авторизация (Google Sign-In, домены Twinby/Neuralab) =====
+function showGate() {
+  $('login-gate').classList.remove('is-hidden');
+  $('user-chip').classList.add('is-hidden');
+}
+function showApp(user) {
+  $('login-gate').classList.add('is-hidden');
+  if (user && user.email) {
+    $('user-email').textContent = user.email;
+    if (user.picture) {
+      $('user-avatar').src = user.picture;
+      $('user-avatar').style.display = '';
+    } else {
+      $('user-avatar').style.display = 'none';
+    }
+    $('user-chip').classList.remove('is-hidden');
+  }
+  loadConfig();
+  icons();
+}
+function loginError(msg) {
+  const el = $('login-error');
+  el.textContent = msg || 'Доступ запрещён';
+  el.classList.remove('is-hidden');
+}
+
+window.handleGoogleLogin = async (response) => {
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential }),
+    });
+    const data = await res.json();
+    if (data.allowed) showApp(data);
+    else loginError(data.error);
+  } catch (e) {
+    loginError('Ошибка сети при входе: ' + e.message);
+  }
+};
+
+async function initAuth() {
+  try {
+    const me = await fetch('/api/me').then((r) => r.json());
+    if (me.authed) showApp(me);
+    else showGate();
+  } catch {
+    showGate();
+  }
+}
+
+$('logoutBtn').addEventListener('click', async () => {
+  await fetch('/api/logout', { method: 'POST' });
+  location.reload();
+});
+
+// Восстановление ключа из localStorage + статус дефолтного ключа на сервере
 function loadSettings() {
   $('token').value = localStorage.getItem('tvw_token') || '';
+}
+
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    hasDefaultKey = !!cfg.hasDefaultKey;
+  } catch {
+    hasDefaultKey = false;
+  }
+  if (hasDefaultKey) {
+    $('token-note').innerHTML =
+      'На сервере задан ключ по умолчанию — можно искать без ввода. Свой ключ здесь переопределит дефолтный (хранится только в браузере). Источник — ScrapeCreators.';
+  }
 }
 
 $('settingsBtn').addEventListener('click', () => {
@@ -49,10 +121,10 @@ function timeAgo(iso) {
 
 function viralBadge(score) {
   if (score === undefined || score === null) return '';
-  if (score >= 70) return `<span class="badge badge--fire">🔥 топ-виральный</span>`;
-  if (score >= 50) return `<span class="badge badge--hot">📈 виральный</span>`;
-  if (score >= 30) return `<span class="badge badge--ok">👀 набирает</span>`;
-  return `<span class="badge badge--mid">средне</span>`;
+  if (score >= 70) return `<span class="badge badge--fire"><i data-lucide="flame"></i> топ-виральный</span>`;
+  if (score >= 50) return `<span class="badge badge--hot"><i data-lucide="trending-up"></i> виральный</span>`;
+  if (score >= 30) return `<span class="badge badge--ok"><i data-lucide="eye"></i> набирает</span>`;
+  return `<span class="badge badge--mid"><i data-lucide="minus"></i> средне</span>`;
 }
 
 let currentPosts = [];
@@ -222,7 +294,7 @@ async function doSearch() {
     alert('Введите хотя бы одно ключевое слово');
     return;
   }
-  if (!$('token').value) {
+  if (!$('token').value && !hasDefaultKey) {
     $('settings-panel').classList.remove('is-hidden');
     $('token').focus();
     alert('Вставьте ключ ScrapeCreators (x-api-key) в «API-ключ»');
@@ -279,4 +351,5 @@ $('keywords').addEventListener('keydown', (e) => {
 });
 
 loadSettings();
+initAuth();
 icons();

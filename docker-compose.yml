@@ -6,5 +6,7 @@ services:
     network_mode: bridge
     ports:
       - "127.0.0.1:9122:3000"
+    env_file:
+      - .env
     environment:
       - PORT=3000

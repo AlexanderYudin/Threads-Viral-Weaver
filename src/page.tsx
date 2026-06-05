@@ -10,6 +10,39 @@ const Swoosh = () => (
 export const HomePage = () => {
   return (
     <div class="app">
+      {/* Экран входа (Google Sign-In, домены Twinby/Neuralab) */}
+      <div id="login-gate" class="login-gate">
+        <div class="login-card glass">
+          <span class="login-mark">
+            <Swoosh />
+          </span>
+          <h1 class="login-title">
+            <span class="brand-name">Twinby</span> · Viral Weaver
+          </h1>
+          <p class="login-sub">
+            Вход для команды — почта <b>@twinby.com</b> или <b>@neuralab.tech</b>
+          </p>
+          <div
+            id="g_id_onload"
+            data-client_id="164827583552-4uc655jb3c190r3g59cm751kq778hrpa.apps.googleusercontent.com"
+            data-callback="handleGoogleLogin"
+            data-auto_prompt="false"
+          ></div>
+          <div class="login-btn-wrap">
+            <div
+              class="g_id_signin"
+              data-type="standard"
+              data-shape="pill"
+              data-theme="filled_blue"
+              data-text="signin_with"
+              data-size="large"
+              data-logo_alignment="left"
+            ></div>
+          </div>
+          <p id="login-error" class="login-error is-hidden"></p>
+        </div>
+      </div>
+
       {/* Header */}
       <header class="site-header">
         <div class="container header-inner">
@@ -22,10 +55,19 @@ export const HomePage = () => {
               <span class="brand-sub">Viral Weaver</span>
             </span>
           </a>
-          <button id="settingsBtn" class="btn btn--ghost btn--sm">
-            <i data-lucide="key-round"></i>
-            <span>API-ключ</span>
-          </button>
+          <div class="header-actions">
+            <button id="settingsBtn" class="btn btn--ghost btn--sm">
+              <i data-lucide="key-round"></i>
+              <span>API-ключ</span>
+            </button>
+            <div id="user-chip" class="user-chip is-hidden">
+              <img id="user-avatar" class="user-avatar" alt="" />
+              <span id="user-email" class="user-email"></span>
+              <button id="logoutBtn" class="user-logout" aria-label="Выйти" title="Выйти">
+                <i data-lucide="log-out"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -40,7 +82,7 @@ export const HomePage = () => {
           </h1>
           <p class="hero-cap">
             Ищем виральные публикации по ключевым словам, считаем ER и viral score, отбираем
-            референсы для рерайта.
+            референсы для рерайта или комментирования.
           </p>
         </div>
 
@@ -65,19 +107,19 @@ export const HomePage = () => {
                 class="chip-tag preset-btn"
                 data-preset="отношения, знакомства, первое свидание, расставание, как влюбить"
               >
-                💕 Отношения (RU)
+                <i data-lucide="heart"></i> Отношения (RU)
               </button>
               <button
                 class="chip-tag preset-btn"
                 data-preset="dating advice, relationship, first date, situationship, green flags, red flags"
               >
-                💘 Dating (EN)
+                <i data-lucide="heart-handshake"></i> Dating (EN)
               </button>
               <button
                 class="chip-tag preset-btn"
                 data-preset="самооценка, психология отношений, тревожная привязанность, границы"
               >
-                🧠 Психология (RU)
+                <i data-lucide="brain"></i> Психология (RU)
               </button>
             </div>
           </div>
@@ -168,12 +210,11 @@ export const HomePage = () => {
               id="token"
               class="input"
               type="password"
-              placeholder="вставьте ключ ScrapeCreators (хранится только в браузере)"
+              placeholder="введите свой ключ, чтобы переопределить дефолтный"
             />
-            <p class="field-note">
+            <p class="field-note" id="token-note">
               Источник данных — ScrapeCreators (api.scrapecreators.com/v1/threads/search): полные
-              метрики постов и расчёт виральности. Ключ не сохраняется на сервере, передаётся только
-              для запроса к провайдеру.
+              метрики постов и расчёт виральности.
             </p>
           </div>
         </section>
@@ -192,7 +233,7 @@ export const HomePage = () => {
           <Swoosh />
           <p class="state-title">Введите ключевые слова и нажмите «Найти виральные посты»</p>
           <p class="state-sub">
-            Нужен ключ ScrapeCreators — вставьте его в «API-ключ» в шапке
+            Ключ ScrapeCreators уже задан по умолчанию — можно искать сразу
           </p>
         </div>
 
@@ -204,7 +245,6 @@ export const HomePage = () => {
       </main>
 
       <footer class="container site-footer">
-        <Swoosh />
         <span>Twinby · Viral Weaver — поиск по ключевым словам, ER и виральность</span>
       </footer>
 
