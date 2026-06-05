@@ -1,34 +1,19 @@
-// ====== Threads Viral Weaver — frontend ======
+// ====== Twinby · Viral Weaver — frontend (ScrapeCreators only) ======
 const $ = (id) => document.getElementById(id);
+const PROVIDER = 'scrapecreators';
 
-const providerHints = {
-  demo: 'Сгенерированные данные дейтинг-тематики. Работает без ключа. Метрики и ER реалистичны для теста интерфейса.',
-  official:
-    'graph.threads.net/keyword_search. Нужен access token (scope threads_keyword_search). НЕ отдаёт лайки/просмотры чужих постов → ER недоступен.',
-  scrapecreators:
-    'api.scrapecreators.com. Нужен x-api-key. Возвращает полные метрики (лайки, ответы, репосты, просмотры) → ER считается.',
-  ensembledata:
-    'ensembledata.com/apis/threads. Нужен token. Возвращает полные метрики → ER считается.',
-};
-
-// Восстановление настроек из localStorage
-function loadSettings() {
-  const provider = localStorage.getItem('tvw_provider') || 'demo';
-  const token = localStorage.getItem('tvw_token') || '';
-  $('provider').value = provider;
-  $('token').value = token;
-  updateHint();
+// Перерисовать Lucide-иконки в новой разметке
+function icons() {
+  if (window.lucide) lucide.createIcons();
 }
-function updateHint() {
-  $('provider-hint').textContent = providerHints[$('provider').value] || '';
+
+// Восстановление ключа из localStorage
+function loadSettings() {
+  $('token').value = localStorage.getItem('tvw_token') || '';
 }
 
 $('settingsBtn').addEventListener('click', () => {
-  $('settings-panel').classList.toggle('hidden');
-});
-$('provider').addEventListener('change', () => {
-  localStorage.setItem('tvw_provider', $('provider').value);
-  updateHint();
+  $('settings-panel').classList.toggle('is-hidden');
 });
 $('token').addEventListener('input', () => {
   localStorage.setItem('tvw_token', $('token').value);
@@ -64,104 +49,119 @@ function timeAgo(iso) {
 
 function viralBadge(score) {
   if (score === undefined || score === null) return '';
-  let cls = 'bg-slate-100 text-slate-500';
-  let label = '';
-  if (score >= 70) {
-    cls = 'bg-red-100 text-red-600';
-    label = '🔥 мощно залетел';
-  } else if (score >= 50) {
-    cls = 'bg-orange-100 text-orange-600';
-    label = '📈 залетает';
-  } else if (score >= 30) {
-    cls = 'bg-amber-100 text-amber-700';
-    label = '👀 неплохо';
-  } else {
-    cls = 'bg-slate-100 text-slate-500';
-    label = 'средне';
-  }
-  return `<span class="text-xs px-2 py-0.5 rounded-full font-semibold ${cls}">${label}</span>`;
+  if (score >= 70) return `<span class="badge badge--fire">🔥 топ-виральный</span>`;
+  if (score >= 50) return `<span class="badge badge--hot">📈 виральный</span>`;
+  if (score >= 30) return `<span class="badge badge--ok">👀 набирает</span>`;
+  return `<span class="badge badge--mid">средне</span>`;
 }
 
 let currentPosts = [];
 
 function renderSummary(data) {
   const withMetrics = data.posts.filter((p) => p.engagement !== undefined);
-  const avgEr =
-    withMetrics.filter((p) => p.er !== null).reduce((s, p) => s + p.er, 0) /
-    (withMetrics.filter((p) => p.er !== null).length || 1);
+  const erPosts = withMetrics.filter((p) => p.er !== null && p.er !== undefined);
+  const avgEr = erPosts.reduce((s, p) => s + p.er, 0) / (erPosts.length || 1);
   const topViral = data.posts.reduce((m, p) => Math.max(m, p.viralScore || 0), 0);
   const totalEng = withMetrics.reduce((s, p) => s + (p.engagement || 0), 0);
 
   const cards = [
-    { icon: 'fa-hashtag', label: 'Найдено постов', value: data.total, color: 'indigo' },
-    { icon: 'fa-fire', label: 'Макс. viral score', value: topViral.toFixed(0), color: 'red' },
-    { icon: 'fa-chart-line', label: 'Средний ER', value: data.metricsAvailable ? avgEr.toFixed(2) + '%' : '—', color: 'green' },
-    { icon: 'fa-heart', label: 'Суммарно вовлечений', value: data.metricsAvailable ? fmt(totalEng) : '—', color: 'pink' },
+    { icon: 'hash', label: 'Найдено постов', value: data.total, mod: 'kiwi' },
+    { icon: 'flame', label: 'Макс. viral score', value: topViral.toFixed(0), mod: 'amber' },
+    {
+      icon: 'trending-up',
+      label: 'Средний ER',
+      value: data.metricsAvailable && erPosts.length ? avgEr.toFixed(2) + '%' : '—',
+      mod: 'purple',
+    },
+    {
+      icon: 'heart',
+      label: 'Суммарно вовлечений',
+      value: data.metricsAvailable ? fmt(totalEng) : '—',
+      mod: 'pink',
+    },
   ];
 
   $('summary').innerHTML = cards
     .map(
       (c) => `
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
-      <div class="text-xs text-slate-400 mb-1"><i class="fas ${c.icon} mr-1 text-${c.color}-500"></i>${c.label}</div>
-      <div class="text-2xl font-bold text-slate-800">${c.value}</div>
+    <div class="stat stat--${c.mod}">
+      <div class="stat-label"><i data-lucide="${c.icon}"></i>${c.label}</div>
+      <div class="stat-value">${c.value}</div>
     </div>`
     )
     .join('');
-  $('summary').classList.remove('hidden');
+  $('summary').classList.remove('is-hidden');
 }
 
 function renderNotes(notes) {
   if (!notes || notes.length === 0) {
-    $('notes').classList.add('hidden');
+    $('notes').classList.add('is-hidden');
     return;
   }
   $('notes').innerHTML = `
-    <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-      <i class="fas fa-circle-info mr-1"></i>
-      <ul class="inline-block align-top ml-1">
-        ${notes.map((n) => `<li>• ${n}</li>`).join('')}
-      </ul>
+    <div class="notes-box">
+      <i data-lucide="info"></i>
+      <ul>${notes.map((n) => `<li>${escapeHtml(n)}</li>`).join('')}</ul>
     </div>`;
-  $('notes').classList.remove('hidden');
+  $('notes').classList.remove('is-hidden');
 }
 
 function postCard(p) {
   const metrics = p.engagement !== undefined;
   const mediaIcon =
-    p.mediaType === 'VIDEO' ? 'fa-video' : p.mediaType === 'IMAGE' ? 'fa-image' : p.mediaType === 'CAROUSEL' ? 'fa-images' : 'fa-align-left';
+    p.mediaType === 'VIDEO'
+      ? 'video'
+      : p.mediaType === 'IMAGE'
+      ? 'image'
+      : p.mediaType === 'CAROUSEL'
+      ? 'images'
+      : 'align-left';
+  // Instagram CDN блокирует хотлинк (CORP same-origin) → fallback на сгенерированный аватар
+  const fallback =
+    'https://api.dicebear.com/7.x/thumbs/svg?backgroundColor=8746ff,00dc00&seed=' +
+    encodeURIComponent(p.username);
+  const avatar = p.avatarUrl || fallback;
   return `
-  <article class="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition flex flex-col">
-    <div class="flex items-center gap-3 mb-3">
-      <img src="${p.avatarUrl || 'https://api.dicebear.com/7.x/thumbs/svg?seed=' + encodeURIComponent(p.username)}" class="w-10 h-10 rounded-full bg-slate-100" />
-      <div class="min-w-0 flex-1">
-        <div class="font-semibold text-sm truncate">${p.displayName || '@' + p.username}</div>
-        <div class="text-xs text-slate-400">@${p.username} · ${timeAgo(p.timestamp)}</div>
+  <article class="post">
+    <div class="post-head">
+      <img class="post-avatar" src="${avatar}" alt="" loading="lazy" referrerpolicy="no-referrer"
+        onerror="this.onerror=null;this.src='${fallback}'" />
+      <div class="post-id">
+        <div class="post-name">${escapeHtml(p.displayName || '@' + p.username)}</div>
+        <div class="post-meta">@${escapeHtml(p.username)} · ${timeAgo(p.timestamp)}</div>
       </div>
-      <span class="text-slate-300"><i class="fas ${mediaIcon}"></i></span>
+      <span class="post-media-ico"><i data-lucide="${mediaIcon}"></i></span>
     </div>
 
-    <p class="text-sm text-slate-700 mb-3 flex-1 line-clamp-5">${escapeHtml(p.text)}</p>
+    <p class="post-text">${escapeHtml(p.text)}</p>
 
-    <div class="flex items-center gap-3 mb-3 flex-wrap">
+    <div class="post-tags">
       ${viralBadge(p.viralScore)}
-      ${p.viralScore !== undefined ? `<span class="text-xs text-slate-500"><i class="fas fa-fire-flame-curved text-red-400"></i> ${p.viralScore}</span>` : ''}
-      ${metrics && p.er !== null ? `<span class="text-xs text-slate-500"><i class="fas fa-chart-line text-green-500"></i> ER ${p.er}%</span>` : ''}
+      ${
+        p.viralScore !== undefined && p.viralScore !== null
+          ? `<span class="metric-inline"><i data-lucide="flame"></i> ${p.viralScore}</span>`
+          : ''
+      }
+      ${
+        metrics && p.er !== null && p.er !== undefined
+          ? `<span class="metric-inline er"><i data-lucide="trending-up"></i> ER ${p.er}%</span>`
+          : ''
+      }
     </div>
 
-    <div class="grid grid-cols-4 gap-1 text-center text-xs text-slate-500 border-t border-slate-100 pt-3 mb-3">
-      <div><div class="font-bold text-slate-700">${fmt(p.likes)}</div><i class="far fa-heart"></i></div>
-      <div><div class="font-bold text-slate-700">${fmt(p.replies)}</div><i class="far fa-comment"></i></div>
-      <div><div class="font-bold text-slate-700">${fmt(p.reposts)}</div><i class="fas fa-retweet"></i></div>
-      <div><div class="font-bold text-slate-700">${fmt(p.views)}</div><i class="far fa-eye"></i></div>
+    <div class="post-stats">
+      <div><div class="s-val">${fmt(p.likes)}</div><div class="s-ico"><i data-lucide="heart"></i></div></div>
+      <div><div class="s-val">${fmt(p.replies)}</div><div class="s-ico"><i data-lucide="message-circle"></i></div></div>
+      <div><div class="s-val">${fmt(p.reposts)}</div><div class="s-ico"><i data-lucide="repeat-2"></i></div></div>
+      <div><div class="s-val">${fmt(p.views)}</div><div class="s-ico"><i data-lucide="eye"></i></div></div>
     </div>
 
-    <div class="flex gap-2">
-      <button class="rewrite-btn flex-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-semibold py-2 rounded-lg" data-id="${p.id}">
-        <i class="fas fa-pen-nib mr-1"></i> Текст / рерайт
+    <div class="post-actions">
+      <button class="btn btn--secondary btn--sm rewrite-btn" data-id="${escapeHtml(p.id)}">
+        <i data-lucide="pen-tool"></i> Текст / рерайт
       </button>
-      <a href="${p.permalink}" target="_blank" class="bg-slate-50 text-slate-500 hover:bg-slate-100 text-xs py-2 px-3 rounded-lg flex items-center">
-        <i class="fas fa-external-link-alt"></i>
+      <a class="btn btn--ghost btn--sm btn--icon" href="${escapeHtml(p.permalink)}" target="_blank" rel="noopener" aria-label="Открыть оригинал">
+        <i data-lucide="external-link"></i>
       </a>
     </div>
   </article>`;
@@ -171,18 +171,19 @@ function escapeHtml(s) {
   return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function renderResults(data) {
   currentPosts = data.posts;
   if (data.posts.length === 0) {
-    $('results').innerHTML = `<div class="text-center py-12 text-slate-400"><i class="fas fa-inbox text-4xl mb-2"></i><p>Ничего не найдено. Попробуйте другие ключи или период.</p></div>`;
+    $('results').innerHTML = `<div class="state"><i data-lucide="inbox" style="width:32px;height:32px;margin:0 auto 8px"></i><p class="state-title">Ничего не найдено</p><p class="state-sub">Попробуйте другие ключи или период.</p></div>`;
+    icons();
     return;
   }
-  $('results').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">${data.posts
-    .map(postCard)
-    .join('')}</div>`;
+  $('results').innerHTML = `<div class="results-grid">${data.posts.map(postCard).join('')}</div>`;
+  icons();
 
   document.querySelectorAll('.rewrite-btn').forEach((b) => {
     b.addEventListener('click', () => openRewrite(b.dataset.id));
@@ -195,16 +196,23 @@ function openRewrite(id) {
   if (!p) return;
   $('modal-text').textContent = p.text;
   $('openOriginal').href = p.permalink;
-  $('rewrite-modal').classList.remove('hidden');
+  $('rewrite-modal').classList.remove('is-hidden');
 }
-$('closeModal').addEventListener('click', () => $('rewrite-modal').classList.add('hidden'));
+$('closeModal').addEventListener('click', () => $('rewrite-modal').classList.add('is-hidden'));
 $('rewrite-modal').addEventListener('click', (e) => {
-  if (e.target.id === 'rewrite-modal') $('rewrite-modal').classList.add('hidden');
+  if (e.target.id === 'rewrite-modal') $('rewrite-modal').classList.add('is-hidden');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') $('rewrite-modal').classList.add('is-hidden');
 });
 $('copyText').addEventListener('click', () => {
   navigator.clipboard.writeText($('modal-text').textContent);
-  $('copyText').innerHTML = '<i class="fas fa-check mr-1"></i> Скопировано';
-  setTimeout(() => ($('copyText').innerHTML = '<i class="far fa-copy mr-1"></i> Скопировать'), 1500);
+  $('copyText').innerHTML = '<i data-lucide="check"></i> Скопировано';
+  icons();
+  setTimeout(() => {
+    $('copyText').innerHTML = '<i data-lucide="copy"></i> Скопировать';
+    icons();
+  }, 1500);
 });
 
 // Поиск
@@ -214,16 +222,23 @@ async function doSearch() {
     alert('Введите хотя бы одно ключевое слово');
     return;
   }
+  if (!$('token').value) {
+    $('settings-panel').classList.remove('is-hidden');
+    $('token').focus();
+    alert('Вставьте ключ ScrapeCreators (x-api-key) в «API-ключ»');
+    return;
+  }
 
-  $('empty-state').classList.add('hidden');
+  $('empty-state').classList.add('is-hidden');
   $('results').innerHTML = '';
-  $('summary').classList.add('hidden');
-  $('notes').classList.add('hidden');
-  $('loader').classList.remove('hidden');
+  $('summary').classList.add('is-hidden');
+  $('notes').classList.add('is-hidden');
+  $('loader').classList.remove('is-hidden');
+  $('searchBtn').classList.add('is-loading');
 
   const payload = {
     keywords,
-    provider: $('provider').value,
+    provider: PROVIDER,
     period: $('period').value,
     sortBy: $('sortBy').value,
     mediaType: $('mediaType').value,
@@ -239,17 +254,22 @@ async function doSearch() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    $('loader').classList.add('hidden');
+    $('loader').classList.add('is-hidden');
+    $('searchBtn').classList.remove('is-loading');
     if (data.error) {
-      $('results').innerHTML = `<div class="text-center py-12 text-red-500"><i class="fas fa-triangle-exclamation text-3xl mb-2"></i><p>${data.error}</p></div>`;
+      $('results').innerHTML = `<div class="state state--error"><i data-lucide="triangle-alert"></i><p class="state-title">${escapeHtml(data.error)}</p></div>`;
+      icons();
       return;
     }
     renderSummary(data);
     renderNotes(data.notes);
     renderResults(data);
+    icons();
   } catch (e) {
-    $('loader').classList.add('hidden');
-    $('results').innerHTML = `<div class="text-center py-12 text-red-500"><i class="fas fa-plug-circle-xmark text-3xl mb-2"></i><p>Ошибка сети: ${e.message}</p></div>`;
+    $('loader').classList.add('is-hidden');
+    $('searchBtn').classList.remove('is-loading');
+    $('results').innerHTML = `<div class="state state--error"><i data-lucide="unplug"></i><p class="state-title">Ошибка сети: ${escapeHtml(e.message)}</p></div>`;
+    icons();
   }
 }
 
@@ -259,3 +279,4 @@ $('keywords').addEventListener('keydown', (e) => {
 });
 
 loadSettings();
+icons();
