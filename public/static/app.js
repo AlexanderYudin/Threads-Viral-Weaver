@@ -196,8 +196,8 @@ function postCard(p) {
   return `
   <article class="post">
     <div class="post-head">
-      <img class="post-avatar" src="${avatar}" alt="" loading="lazy" referrerpolicy="no-referrer"
-        onerror="this.onerror=null;this.src='${fallback}'" />
+      <img class="post-avatar" src="${escapeHtml(avatar)}" data-fallback="${escapeHtml(fallback)}"
+        alt="" loading="lazy" referrerpolicy="no-referrer" />
       <div class="post-id">
         <div class="post-name">${escapeHtml(p.displayName || '@' + p.username)}</div>
         <div class="post-meta">@${escapeHtml(p.username)} · ${timeAgo(p.timestamp)}</div>
@@ -256,6 +256,14 @@ function renderResults(data) {
   }
   $('results').innerHTML = `<div class="results-grid">${data.posts.map(postCard).join('')}</div>`;
   icons();
+
+  // Аватар Instagram блокируется CORP → один раз падаем на fallback (без зацикливания)
+  document.querySelectorAll('.post-avatar').forEach((img) => {
+    img.addEventListener('error', function onErr() {
+      img.removeEventListener('error', onErr);
+      if (img.dataset.fallback) img.src = img.dataset.fallback;
+    });
+  });
 
   document.querySelectorAll('.rewrite-btn').forEach((b) => {
     b.addEventListener('click', () => openRewrite(b.dataset.id));

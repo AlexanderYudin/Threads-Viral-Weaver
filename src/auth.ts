@@ -76,6 +76,9 @@ export async function verifyGoogleCredential(
     )
     if (!res.ok) return { error: 'Не удалось проверить токен Google' }
     const p: any = await res.json()
+    const iss = String(p.iss || '')
+    if (iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com')
+      return { error: 'Неверный issuer токена' }
     if (p.aud !== GOOGLE_CLIENT_ID) return { error: 'Неверный client_id' }
     if (p.email_verified !== true && p.email_verified !== 'true')
       return { error: 'Email не подтверждён' }

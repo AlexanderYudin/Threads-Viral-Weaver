@@ -114,8 +114,16 @@ app.post('/api/search', async (c) => {
   const now = Date.now()
   const since = periodToSince(params.period, now)
 
+  // Дедуп по id: один пост может попасть под несколько ключевых слов
+  const seenIds = new Set<string>()
+
   // Обогащение метриками + фильтры
   let posts: ThreadsPost[] = out.posts
+    .filter((p) => {
+      if (!p.id || seenIds.has(p.id)) return false
+      seenIds.add(p.id)
+      return true
+    })
     .map((p) => enrichPost(p, now))
     .filter((p) => {
       // период
@@ -123,9 +131,13 @@ app.post('/api/search', async (c) => {
         const ts = new Date(p.timestamp).getTime() / 1000
         if (ts < since) return false
       }
-      // тип медиа
+      // тип медиа (карусель считаем картинкой)
       if (params.mediaType && params.mediaType !== 'ALL') {
-        if (p.mediaType !== params.mediaType) return false
+        const matches =
+          params.mediaType === 'IMAGE'
+            ? p.mediaType === 'IMAGE' || p.mediaType === 'CAROUSEL'
+            : p.mediaType === params.mediaType
+        if (!matches) return false
       }
       // минимальный viral score
       if (params.minViral && (p.viralScore ?? 0) < params.minViral) return false
