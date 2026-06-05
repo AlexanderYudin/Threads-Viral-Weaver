@@ -85,7 +85,8 @@ export async function officialProvider(
 }
 
 // ---------- SCRAPECREATORS (неофициальный, с метриками) ----------
-// https://api.scrapecreators.com/v1/threads/keyword/search
+// https://api.scrapecreators.com/v1/threads/search?query=...  (header: x-api-key)
+// Ответ: { success, credits_remaining, posts: [...] }
 export async function scrapeCreatorsProvider(
   params: SearchParams
 ): Promise<ProviderOutput> {
@@ -98,16 +99,34 @@ export async function scrapeCreatorsProvider(
   }
   const allPosts: ThreadsPost[] = []
   const notes: string[] = []
+  let creditsLeft: number | undefined
 
   for (const kw of params.keywords) {
-    const url = new URL('https://api.scrapecreators.com/v1/threads/keyword/search')
+    const url = new URL('https://api.scrapecreators.com/v1/threads/search')
     url.searchParams.set('query', kw)
     try {
       const res = await fetch(url.toString(), {
         headers: { 'x-api-key': params.token },
       })
-      const data: any = await res.json()
-      const items = data.searchResults || data.data || data.results || []
+      // Устойчивый парсинг: при ошибке API отдаёт текст ("Not Found"), не JSON
+      const text = await res.text()
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch {
+        notes.push(
+          `Сбой ScrapeCreators для «${kw}»: HTTP ${res.status} — ${text.slice(0, 120)}`
+        )
+        continue
+      }
+      if (!res.ok || data.success === false) {
+        notes.push(
+          `Ошибка ScrapeCreators для «${kw}»: ${data.message || data.error || `HTTP ${res.status}`}`
+        )
+        continue
+      }
+      if (typeof data.credits_remaining === 'number') creditsLeft = data.credits_remaining
+      const items = data.posts || data.searchResults || data.data || data.results || []
       for (const raw of items) {
         const t = raw.thread_items?.[0]?.post || raw.post || raw
         allPosts.push(normalizeGeneric(t))
@@ -115,6 +134,9 @@ export async function scrapeCreatorsProvider(
     } catch (e: any) {
       notes.push(`Сбой ScrapeCreators для «${kw}»: ${e.message}`)
     }
+  }
+  if (creditsLeft !== undefined) {
+    notes.push(`ScrapeCreators: осталось кредитов — ${creditsLeft}.`)
   }
   return { posts: allPosts, metricsAvailable: true, notes }
 }
@@ -170,7 +192,14 @@ function normalizeGeneric(raw: any): ThreadsPost {
     timestamp: raw.taken_at
       ? new Date(raw.taken_at * 1000).toISOString()
       : raw.timestamp || new Date().toISOString(),
-    mediaType: raw.media_type === 2 ? 'VIDEO' : raw.media_type === 8 ? 'CAROUSEL' : raw.image_versions2 ? 'IMAGE' : 'TEXT',
+    mediaType:
+      raw.media_type === 2 || raw.video_versions?.length
+        ? 'VIDEO'
+        : raw.media_type === 8 || raw.carousel_media?.length
+        ? 'CAROUSEL'
+        : raw.image_versions2?.candidates?.length
+        ? 'IMAGE'
+        : 'TEXT',
     likes: raw.like_count ?? raw.likes ?? null,
     replies: raw.reply_count ?? raw.text_post_app_info?.direct_reply_count ?? raw.replies ?? null,
     reposts: raw.repost_count ?? raw.text_post_app_info?.repost_count ?? raw.reposts ?? null,

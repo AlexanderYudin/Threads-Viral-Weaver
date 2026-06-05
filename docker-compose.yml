@@ -1,0 +1,10 @@
+services:
+  weaver:
+    build: .
+    container_name: threads-viral-weaver
+    restart: unless-stopped
+    network_mode: bridge
+    ports:
+      - "127.0.0.1:9122:3000"
+    environment:
+      - PORT=3000
